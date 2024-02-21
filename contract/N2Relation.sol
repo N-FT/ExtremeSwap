@@ -315,11 +315,11 @@ contract N2Relation is AdminRole, Initializable {
             address iAddr = invList[addr][i];
             uint256 iVIP = getVIP(iAddr, dID);
             if(iVIP >=  myVIP){
-                return true;
+                return false;
             }
         }  
         }
-        return false;
+        return true;
     }
 
     function claimTeamReward() external checkDayID{
@@ -379,6 +379,28 @@ contract N2Relation is AdminRole, Initializable {
         require(amount<=100,"Wrong Number");
         rewardAdjust = amount;
     }
+
+    function devSetLv(address[] memory addrs,uint256[] memory lvs) external onlyAdmin{
+        require(addrs.length == lvs.length,"DATA ERROR");
+        for(uint256 i=0;i<addrs.length;i++){
+            address addr = addrs[i];
+            uint256 lv = lvs[i];
+            mLv[addr] = lv;
+        }
+    }
+
+
+     function checkUserList(address addr) external onlyAdmin{
+        if (!userList.contains(addr))
+        {
+            userList.add(addr);
+        }     
+    }
+
+
+     
+
+
 
 
     }

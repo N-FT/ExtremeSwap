@@ -481,4 +481,13 @@ contract N2SWAP is AdminRole, Initializable {
         resaleAmount[msg.sender][dayID] -= 1;
         nftOwnerList[dayID][nftNum] = address(0);
     }
+
+    function fixIncome(address[] memory addrs,uint256[] memory amounts) external onlyAdmin {
+        require(addrs.length == amounts.length,"DATA ERROR");
+        for(uint256 i = 0;i<addrs.length;i++){
+        address addr = addrs[i];
+        income[addr] -= amounts[i];
+        }
+    }
+
 }
