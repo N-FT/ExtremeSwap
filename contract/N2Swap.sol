@@ -41,6 +41,10 @@ interface INFT {
     function ownerOf(uint256 tokenId) external view returns (address);
 }
 
+interface IRL {
+    function checkUserList(address addr) external;
+}
+
 // 合约地址：0x904AF34F01D3bA83923557A453615EFa1CBD06Ca
 contract N2SWAP is AdminRole, Initializable {
     // using SafeMath for uint256;
@@ -91,6 +95,7 @@ contract N2SWAP is AdminRole, Initializable {
 
     uint256 public percent;
 
+    address public relation;
 
     function initialize() public initializer {
         _addAdmin(msg.sender);
@@ -107,43 +112,49 @@ contract N2SWAP is AdminRole, Initializable {
 
     event RESERVED(address addr, uint256 amount, uint256 _dayID);
 
-    function reserve(uint256 amount,bool feeType) external {
-        require(!reserveStats[msg.sender][dayID],"RESERVED ALREADY");
+    function reserve(uint256 amount, bool feeType) external {
+        require(!reserveStats[msg.sender][dayID], "RESERVED ALREADY");
+        IRL(relation).checkUserList(msg.sender);
         uint256 avPrice = getAPrice();
         uint256 value = avPrice * amount;
-        if(value < balance[msg.sender]){
-            IVAULT(fundAddress).sendUSDT(msg.sender,balance[msg.sender] - value);
+        if (value < balance[msg.sender]) {
+            IVAULT(fundAddress).sendUSDT(
+                msg.sender,
+                balance[msg.sender] - value
+            );
             balance[msg.sender] = value;
             reserveAmount[msg.sender][dayID] = amount;
             reserveStats[msg.sender][dayID] = true;
-            emit RESERVED(msg.sender,amount,dayID);
-        }
-        else{
-            IERC20Upgradeable(USDT).transferFrom(msg.sender,fundAddress,value - balance[msg.sender]);
+            emit RESERVED(msg.sender, amount, dayID);
+        } else {
+            IERC20Upgradeable(USDT).transferFrom(
+                msg.sender,
+                fundAddress,
+                value - balance[msg.sender]
+            );
             balance[msg.sender] = value;
             reserveAmount[msg.sender][dayID] = amount;
             reserveStats[msg.sender][dayID] = true;
-            emit RESERVED(msg.sender,amount,dayID);
+            emit RESERVED(msg.sender, amount, dayID);
         }
 
-        (,uint256 usdtAmount) = getSaleTimesAndFee(msg.sender,dayID);
-        if(usdtAmount >0){
-        if(feeType){
-        IPOOL(pool).costPoints(msg.sender, usdtAmount*percent/100);
+        (, uint256 usdtAmount) = getSaleTimesAndFee(msg.sender, dayID);
+        if (usdtAmount > 0) {
+            if (feeType) {
+                IPOOL(pool).costPoints(
+                    msg.sender,
+                    (usdtAmount * percent) / 100
+                );
+            } else {
+                IERC20Upgradeable(USDT).transferFrom(msg.sender, fundAddress, usdtAmount);
+            }
         }
-        else {
-        IERC20Upgradeable(USDT).transferFrom(msg.sender,fundAddress,usdtAmount);   
-        }
-        }
-
     }
 
-     function setPercent(uint256 amount) external onlyAdmin {
-        require(amount <= 100,"Wrong Amount");
+    function setPercent(uint256 amount) external onlyAdmin {
+        require(amount <= 100, "Wrong Amount");
         percent = amount;
     }
-
-
 
     function setNFTOwnerList(
         address[] memory addrs,
@@ -358,8 +369,6 @@ contract N2SWAP is AdminRole, Initializable {
         }
     }
 
- 
-
     // function getSaleTimesAndFee(address _addr,uint256 _dayID) public view returns(uint256 times, uint256 fee){
     //     for(uint256 i = 0; i< nftOwnerList[_dayID].length; i++){
     //         if(_addr == nftOwnerList[_dayID][i]){
@@ -370,19 +379,14 @@ contract N2SWAP is AdminRole, Initializable {
     //     }
     // }
 
-    
-
-    function batchUpdateResale(
-        address[] memory addrs,
-        uint256[] memory amounts
-    ) external onlyAdmin {
-        require(addrs.length == amounts.length, "DATA ERROR");
-        for (uint256 i = 0; i < addrs.length; i++) {
+    function batchUpdateResale(address[] memory addrs, uint256[] memory amounts, uint256[] memory nfts) external onlyAdmin {
+        require(addrs.length == amounts.length && nfts.length== amounts.length,"DATA ERROR");
+        for(uint256 i = 0;i< addrs.length;i++){
             address addr = addrs[i];
-            resaleFee[addr][dayID] += amounts[i] * 3;
-            resaleAmount[addr][dayID] += 1;
+            resaleFee[addr][dayID] += amounts[i]*3;
+            resaleAmount[addr][dayID] += nfts[i];
+            }
         }
-    }
 
     function getSaleTimesAndFee(
         address _addr,
@@ -466,8 +470,6 @@ contract N2SWAP is AdminRole, Initializable {
         nftOwnerList[dayID][nftNum] = address(0);
     }
 
- 
-
     function TakeNFT(uint256 nftNum) external {
         uint256 tokenID = NFTInfoList[nftNum].tokenID;
         address gnft = NFTInfoList[nftNum].tokenContract;
@@ -482,12 +484,26 @@ contract N2SWAP is AdminRole, Initializable {
         nftOwnerList[dayID][nftNum] = address(0);
     }
 
-    function fixIncome(address[] memory addrs,uint256[] memory amounts) external onlyAdmin {
-        require(addrs.length == amounts.length,"DATA ERROR");
-        for(uint256 i = 0;i<addrs.length;i++){
-        address addr = addrs[i];
-        income[addr] -= amounts[i];
+    function fixIncome(
+        address[] memory addrs,
+        uint256[] memory amounts
+    ) external onlyAdmin {
+        require(addrs.length == amounts.length, "DATA ERROR");
+        for (uint256 i = 0; i < addrs.length; i++) {
+            address addr = addrs[i];
+            income[addr] -= amounts[i];
         }
     }
 
+    function BatchFixTokenid(uint256[] memory nums) external onlyAdmin {
+        for (uint256 i = 0; i < nums.length; i++) {
+            uint256 num = nums[i];
+            uint256 tokenId = NFTInfoList[num].tokenID;
+            NFTInfoList[num].tokenID = tokenId - 1;
+        }
+    }
+
+    function setRL(address addr) external onlyAdmin {
+        relation = addr;
+    }
 }

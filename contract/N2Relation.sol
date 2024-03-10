@@ -325,7 +325,14 @@ contract N2Relation is AdminRole, Initializable {
     function claimTeamReward() external checkDayID{
         uint256 reward = viewTeamReward(msg.sender,dayID);
         uint256 myVIP = getVIP(msg.sender,dayID);
-
+        if(reward>0 && myVIP > 0){
+            address inv = Inviter[msg.sender];
+            uint256 invVIP = getVIP(inv,dayID);
+            if(invVIP == myVIP && viewVIPStats(msg.sender,dayID)){
+            IVAULT(fundAddress).sendUSDT(inv,reward/10);  
+            emit CLAIMSLREWARD(inv,reward/10,dayID);
+            }
+        }
         if(promoteResult[msg.sender][dayID] >0){
             reward += promoteResult[msg.sender][dayID];
             promoteResult[msg.sender][dayID] = 0;
@@ -336,16 +343,10 @@ contract N2Relation is AdminRole, Initializable {
             claimedTeamReward[msg.sender] += reward;
             emit CLAIMTREWARD(msg.sender,reward,dayID);
         }
-        if(myVIP > 0){
-            address inv = Inviter[msg.sender];
-            uint256 invVIP = getVIP(inv,dayID);
-            if(invVIP == myVIP && viewVIPStats(msg.sender,dayID)){
-            IVAULT(fundAddress).sendUSDT(inv,reward/10);  
-            emit CLAIMSLREWARD(inv,reward/10,dayID);
-            }
-        }
-
     }
+
+
+
     event CLAIMTREWARD(address addr, uint256 amount, uint256 dayID);
     event CLAIMSLREWARD(address addr, uint256 amount, uint256 dayID);
 
